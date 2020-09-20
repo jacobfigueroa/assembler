@@ -1,0 +1,1577 @@
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 2
+ //	File:               errorTable.h
+ // Description of File:
+ // The error table contains a vector which holds error messages
+ // and its corresponding error codes
+ ***************************************************************/
+
+#include <vector>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
+using namespace std;
+
+#ifndef _334_Phase_2_errorTable_h
+#define _334_Phase_2_errorTable_h
+
+class errorTable
+{
+private:
+    //node which holds an error message and its error code
+    class node
+	{
+	public:
+        string errorMessage;
+        int errorCode;
+        node(string errMessage, int errCode)
+        {
+            errorMessage=errMessage;
+            errorCode=errCode;
+        }
+	};
+    vector<node*> table;
+    
+public:
+	
+    //fill the table with error messages and error codes
+	errorTable()
+	{
+        table.push_back(new node("Duplicate labels", 10));
+        table.push_back(new node("Illegal label", 11));
+        table.push_back(new node("Illegal operation", 12));
+        table.push_back(new node("Missing or illegal operand on data storage directive", 13));
+        table.push_back(new node("Missing or illegal operand on START directive", 14));
+        table.push_back(new node("Missing or illegal operand on END directive", 15));
+        table.push_back(new node("Too many symbols in source program", 16));
+        table.push_back(new node("Program too long", 17));
+        table.push_back(new node("Constant is more than 32 hex digits (16 bytes) long", 18));
+        table.push_back(new node("Constant contains an odd ammount of hex digits", 19));
+        table.push_back(new node("More than 30 characters in character string", 20));
+        table.push_back(new node("RSUB does not require an operand",21));
+        table.push_back(new node("Constant requires only hex digits",22));
+        table.push_back(new node("Mising first single quote",23));
+        table.push_back(new node("Mising second single quote",24));
+        table.push_back(new node("Missing both single quotes",25));
+    }
+    
+	~errorTable()
+	{}
+    
+    //search through table and look for label
+    //return label address, if label is not in table
+    //return -1
+    int getCode(string errMessage)
+    {
+        for(int i=0;i<table.size();i++)
+        {
+            if(table[i]->errorMessage==errMessage)
+                return table[i]->errorCode;
+        }
+        return -1;
+    }
+    
+    //return an error message given its error code
+    string getMessage(int errCode)
+    {
+        for(int i=0;i<table.size();i++)
+        {
+            if(table[i]->errorCode==errCode)
+                return table[i]->errorMessage;
+        }
+        return "";
+    }
+    
+    //display all error codes and messages
+    void display()
+    {
+        for(int i=0;i<table.size();i++)
+        {
+            cout<<dec<<table[i]->errorCode<<" "<<table[i]->errorMessage<<endl;
+        }
+    }
+};
+
+
+
+#endif
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 1/4
+ //	File:               main.cpp
+ // Description of File:
+ // This file contains the code for a command interpreter.
+ // When the assemble command is called, pass one and two of the
+ // assembler is called. The load command is used to load an
+ // object file into memory. Dump displays the contents of
+ // the memory. Execute runs the code that was put into memory.
+ ***************************************************************/
+
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <cstdlib>
+#include <ctype.h>
+#include <cctype>
+#include "passOne.h"
+#include "passTwo.h"
+#include "passTwoFunctions.h"
+#include "sicengine.c"
+
+using namespace std;
+
+/* Function prototypes that are used to interact with sicengine.c */
+int load(string filename);
+void dump(int address1, int address2);
+
+/* Function prototypes */
+void split(string * tokens, string line);
+int hexStringToInt(string s);
+bool isValidHex(string hex);
+
+int main()
+{
+
+	//initialize sic engine
+	SICInit();
+
+    string command;
+    unsigned long startAddress;
+    
+    bool running=true;
+    
+    while(running)
+    {
+        bool validCommand=false;
+        cout << "Command> ";
+
+        //get command
+        getline (cin,command);
+        
+
+        string tokens[10]; //string array to hold the tokenized command
+        split(tokens,command);	//tokenize the string
+        
+        if(tokens[0]=="load")
+        {
+            validCommand=true;
+            if(tokens[1] != "")
+            {
+                int s_a = load(tokens[1]);
+                startAddress = (unsigned long)s_a;
+            }
+            else
+                cout<<tokens[0]<<" requires a parameter"<<endl;
+        }
+        
+        if(tokens[0]=="execute")
+        {
+            validCommand=true;
+            if(tokens[1] == "")
+                SICRun(&startAddress, 0);
+            else
+                cout<<tokens[0]<<" does not require a parameter"<<endl;
+        }
+        
+        if(tokens[0]=="debug")
+        {
+            validCommand=true;
+            if(tokens[1] == "")
+            {
+                cout<<"At the moment the "<<tokens[0]<<" command has not been implemented."<<endl;
+                //debug();
+            }
+            else
+                cout<<tokens[0]<<" does not require a parameter"<<endl;
+        }
+        
+        if(tokens[0]=="dump")
+        {
+            validCommand=true;
+            
+            if(tokens[1] != "" && tokens[2] != "")
+            {
+                bool validHex1=isValidHex(tokens[1]);
+                bool validHex2=isValidHex(tokens[2]);
+
+                if(!validHex1 || !validHex2)
+                    cout<<"dump requires two hexadecimal parameters"<<endl;
+                else
+                {
+                	int addr1 = hexStringToInt(tokens[1]);
+    				int addr2 = hexStringToInt(tokens[2]);
+
+   		 			if(addr1 > addr2)
+    					cout<<"The second hex address must not be bigger than the first address."<<endl;
+    				else
+                    	dump(addr1, addr2);
+                }
+            }
+            else
+                cout<<tokens[0]<<" requires two hexadecimal parameters"<<endl;
+                
+        }
+        
+        if(tokens[0]=="help")
+        {
+            validCommand=true;
+            if(tokens[1] == "")
+            {
+                cout<<endl<<"Available commands:"<<endl
+                <<"load <filename>"<<endl
+                <<"execute"<<endl
+                <<"debug"<<endl
+                <<"dump <start> <end>"<<endl
+                <<"help"<<endl
+                <<"assemble <filename>"<<endl
+                <<"directory"<<endl
+                <<"exit"<<endl<<endl
+                <<"NOTE: Commands must be lowercase, parameters are case dependent"<<endl;
+            }
+            else
+                cout<<tokens[0]<<" does not require a parameter"<<endl;
+        }
+        
+        
+        if(tokens[0]=="assemble")
+        {
+            validCommand=true;
+            if(tokens[1] != "")
+            {
+                string filename = tokens[1];
+                
+                //assemble
+                symbolTable symtab;
+                opcodeTable optab;
+                errorTable errtab;
+                passOne(symtab,optab,errtab,filename);
+                passTwo(symtab,optab,errtab);
+            }
+            else
+                cout<<tokens[0]<<" requires a parameter"<<endl;
+        }
+        
+        if(tokens[0]=="directory")
+        {
+            validCommand=true;
+            if(tokens[1] == "")
+                system("ls");
+            else
+                cout<<tokens[0]<<" does not require a parameter"<<endl;
+        }
+        
+        if(tokens[0]=="exit")
+        {
+            validCommand=true;
+            running=false;
+        }
+        			        	
+        if(!validCommand)
+            cout<<"Enter help for a list of available commands and examples of correct syntax"<<endl;
+        
+    }
+    
+    return 0;
+}
+
+/* objectFile.txt is opened and the objectcode is loaded into memory using the PutMem function from sicengine.c */
+int load(string filename)
+{
+	ifstream objectFile;
+    objectFile.open(filename.c_str());
+    int startingaddr;
+    
+    if (objectFile.is_open())
+    {
+        while ( !objectFile.eof() )
+        {
+            string line;
+            getline(objectFile,line);
+            if(line[0] == 'T')
+            {
+                string address = line.substr(1,6);
+                int addr = hexStringToInt(address);
+
+                string objectCode = line.substr(9);
+
+                //go through the object code, 2 characters at a time and load them into memory
+                for(int i = 0; i<objectCode.length(); i+=2)
+                {	
+                    string s_byte;	//string to hold the 2 characters 
+                    s_byte += objectCode[i];	//store first character
+                    s_byte += objectCode[i+1];	//store second character
+
+                    int byte = hexStringToInt(s_byte);
+                    unsigned char c = byte;
+                    PutMem(addr,&c,0);
+                    addr++;
+                }
+            }
+            if(line[0] == 'E')
+            {
+                startingaddr = hexStringToInt(line.substr(1,6));
+            }
+
+        }
+    }
+    objectFile.close();
+    return startingaddr;
+}
+
+/* Displays the memory address, followed by the contents for each address between address 1 and 2. */
+void dump(int address1, int address2)
+{
+    unsigned char byte; //used to store the contents
+
+    int display = 0; //variable used to nice formatting.
+    for(int i = address1; i<address2; i++)
+    {
+    	// display bytes in groups of 16
+    	if(display==0)
+    		cout<<hex<<i<<": ";
+    	else 
+    	{	
+    		if(display % 24 == 0)
+        		cout<<endl<<hex<<i<<": ";
+    		else if(display % 8 == 0)
+        		cout<<" "<<hex<<i<<": ";
+    	}
+
+    	//get memory and store in byte
+        GetMem (i, &byte, 0);
+        cout<<hex<<setfill ('0') <<setw (2)<<int((&byte)[0])<<"";
+
+        display++;
+    }
+    cout<<endl;
+}
+
+/* Given a string, the function tokenizes the string by removing spaces and tabs*/
+void split(string * tokens, string line)
+{
+    int j=0;
+    for(int i = 0; i < line.length(); i++)
+    {
+        if(line[i] != ' ' && line[i] != '\t')
+        {
+            tokens[j]+=line[i];
+            if(line[i+1] == ' ')
+                j++;
+        }
+    }
+}
+
+/* A hex string is passed as a parameter and converted to an int which is then returned */
+int hexStringToInt(string s)
+{
+    int n;
+    stringstream ss;
+    ss<<s;
+    ss>>hex>>n;
+    return n;
+}
+
+/* returns true if a given hex string is comprised of valid hex digits */
+bool isValidHex(string hex)
+{
+	//loop through each character in hex string
+	//if the chararacter is not a valid hex digit return false
+	for(int i = 0; i<hex.length(); i++)
+    {
+        if(!isxdigit(hex[i]))
+        	return false;
+    }
+    return true;
+}
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 2
+ //	File:               symbolTable.h
+ // Description of File:
+ // The opcode table contains a vector which holds opcodes
+ // and their corresponding values
+ ***************************************************************/
+
+#include <vector>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
+using namespace std;
+
+#ifndef _334_Phase_2_opcodeTable_h
+#define _334_Phase_2_opcodeTable_h
+
+class opcodeTable
+{
+private:
+    ifstream opTabSource; //file to be read which contains the values for the opcode
+    
+    //node which holds an opcode and a value
+    class node
+	{
+	public:
+        string opcode;
+        int code;
+        node(string opc, int value)
+        {
+            opcode = opc;
+            code = value;
+        }
+	};
+    vector<node*> table;
+    
+public:
+	
+    //construct the opcode table by reading in the optab.txt file
+	opcodeTable()
+	{
+        opTabSource.open("optab.txt");
+        if (opTabSource.is_open())
+        {
+            while ( !opTabSource.eof() )
+            {
+                string opc; //holds opcode
+                string valuehex; //holds hex string which will later be converted to an it
+                int value; //int value of the hex string
+                
+                opTabSource>>opc;
+                opTabSource>>valuehex;
+                
+                //hex string to int function
+                stringstream ss;
+                ss<<valuehex;
+                ss>>hex>>value;
+                
+                //store in table
+                table.push_back(new node(opc, value));
+            }
+        }
+        
+    }
+    
+	~opcodeTable()
+	{}
+    
+    //displays all opcodes and values stored in the opcode table
+    void display()
+    {
+        for(int i=0;i<table.size(); i++)
+        {
+            cout<<table[i]->opcode<<" "<<hex<<table[i]->code<<endl;
+        }
+    }
+    
+    //given an opcode and a boolean variable which represents if the opcode is in the table
+    //return the opcode value, if the opcode does not exist in the table return a -1
+    int getValue(string opc, bool& valid)
+    {
+        for(int i=0;i<table.size();i++)
+        {
+            if(opc == table[i]->opcode)
+            {
+                valid=true;
+                return table[i]->code;
+            }
+        }
+        valid=false;
+        return -1;
+    }
+};
+
+
+#endif
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 2
+ //	File:               passOne.h
+ // Description of File:
+ // Pass One of the assembler. After the passOne function is
+ // called, a symbol table and an intermediate files is produced
+ // which will be used in pass two of the assemble.
+ ***************************************************************/
+
+#ifndef _334_Phase_2_passOne_h
+#define _334_Phase_2_passOne_h
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <cctype>
+#include "passOneFunctions.h"
+#include "symbolTable.h"
+#include "opcodeTable.h"
+#include "errorTable.h"
+using namespace std;
+
+
+
+void passOne(symbolTable& symtab, opcodeTable& optab, errorTable& errtab,string filename)
+{
+    ifstream source;
+    source.open(filename.c_str());
+    ofstream intermediateFile;
+    intermediateFile.open("intermediateFile.txt");
+    
+    string line; //holds the source line
+    string programName;
+    int LOCCTR,startingAddress,programLength;
+    
+    string label,opcode,operand;
+    
+    const int SIZE = 20;
+    
+    //words array holds the split up string. maximum of 20 words.
+    //words[0] holds the label, words[1] holds the instruction and words[2] holds the operand
+    string words[SIZE];
+    
+    int lineNumber=0; //keeps track of the number of lines in the program
+    bool comment = false;
+    
+    if (source.is_open())
+    {
+        while ( !source.eof() )
+        {
+            getline(source,line,'\n');
+            
+            //initialize array that will hold up the split up string
+            for(int k=0;k<SIZE;k++)
+                words[k]="";
+            
+            //initialize label, opcode and operand
+            label = "",opcode = "",operand = "";
+            bool emptyLabel, emptyOpcode, emptyOperand;
+            
+            vector<int> errorList; //holds the errors found for a given line
+            
+            //check to see which fields are missing
+            emptyFieldChecker(emptyLabel, emptyOpcode, emptyOperand, line);
+            
+            //after calling the function update the array that holds the split up text
+            if(emptyLabel)
+                words[0]="empty";
+            if(emptyOpcode)
+                words[1]="empty";
+            if(emptyOperand)
+                words[2]="empty";
+            
+            if(line[0]=='.') //if a comment, do nothing.
+            {
+                comment = true;
+                printCommentToIntermediateFile(intermediateFile,line);
+            }
+            else if(line.length()>0)
+            {
+                lineNumber++;
+                
+                //split method
+                split(words,line,label,opcode,operand);
+                
+                if(opcode=="START")
+                {
+                    //Perform error checks
+                    if(label !="empty")
+                    {
+                        //check if lable is longer than 6 characters
+                        if(label.length()>6)
+                            errorList.push_back(errtab.getCode("Illegal label"));
+                        //check to determing if the first character of the label is a letter
+                        if(!isalpha(label[0]))
+                            errorList.push_back(errtab.getCode("Illegal label"));
+                        
+                        //verify that the label is alpha numeric
+                        bool validLabel=true;
+                        for(int i = 0; i<label.length();i++)
+                        {
+                            if (!isalnum(label[i]))
+                                validLabel=false;
+                        }
+                        if(!validLabel)
+                            errorList.push_back(errtab.getCode("Illegal label"));
+                        programName = label;
+                        
+                            
+                    }
+                    //check for valid operand after start make sure its not empty and that its a number
+                    if(operand!="empty")
+                    {
+                        //check that the operand is a valid number
+                        bool validAddress=true;
+                        for(int i = 0; i<operand.length();i++)
+                        {
+                            if (!isxdigit(operand[i]))
+                                validAddress=false;
+                        }
+                        
+                        if(validAddress)
+                        {
+                            //convert hex string to an int and store in startingAddress variable
+                            stringstream ss1;
+                            ss1<<operand;
+                            ss1>>hex>>startingAddress;
+                        }
+                        else
+                        {
+                            errorList.push_back(errtab.getCode("Missing or illegal operand on START directive"));
+                            startingAddress=0; //set to 0 so that the assembler will still run
+                        }
+                    }
+                    else
+                    {
+                        errorList.push_back(errtab.getCode("Missing or illegal operand on START directive"));
+                        startingAddress=0; //set to 0 so that the assembler will still run
+                    }
+                    
+                    LOCCTR=startingAddress;
+                    
+                    int x = -1; //-1 means that the opcode does not have a value
+                    printToIntermediateFile(intermediateFile, line, LOCCTR, opcode, x, operand,errorList);
+                }
+                else if(opcode!="END")
+                {
+                    if(lineNumber==1)
+                    {
+                        LOCCTR=0;
+                    }
+                    //store value of locctr before its modified in the handleLineOne function
+                    int oldLOCCTR=LOCCTR;
+                    
+                    int opcodeValue=handleLineOne(label, opcode, operand, intermediateFile, LOCCTR, symtab, optab, errorList, errtab);
+                    
+                    printToIntermediateFile(intermediateFile, line, oldLOCCTR, opcode, opcodeValue, operand,errorList);
+                    
+                }
+                else if(opcode == "END")
+                {
+                    programLength = LOCCTR-startingAddress;
+                    int x = -1; //-1 means that the opcode does not have a value
+                    
+                    //special end program error checks
+                    if(symtab.getSize()>500)
+                        errorList.push_back(errtab.getCode("Too many symbols in source program"));
+                    if(LOCCTR > 32767)
+                        errorList.push_back(errtab.getCode("Program too long"));
+                    if(operand !=symtab.getLabel(0))
+                        errorList.push_back(errtab.getCode("Missing or illegal operand on END directive"));
+                    
+                    printToIntermediateFile(intermediateFile, line, LOCCTR, opcode, x, operand,errorList);
+                }
+                
+            }
+        }
+        
+        symtab.programStartingAddress=startingAddress;
+        symtab.programName=programName;
+        symtab.programLength=programLength;
+        source.close();
+        intermediateFile.close();
+        symtab.saveTable();
+    }
+    else
+    {
+        cout<<"Invalid filename, "<<filename<<" does not exist."<<endl;
+    }
+}
+
+
+#endif
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 2
+ //	File:               passOneFunctions.h
+ // Description of File:
+ // Stores functions that were used in pass one
+ // such as, string split function, a function to determine
+ // which fields are empty and handleLineOne which is defined
+ // in the pass one algorithm from the book
+ ***************************************************************/
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <cctype>
+#include "symbolTable.h"
+#include "opcodeTable.h"
+#include "errorTable.h"
+using namespace std;
+
+#ifndef _334_Phase_2_functions_h
+#define _334_Phase_2_functions_h
+
+//determines whether the label, opcode or operand is missing
+void emptyFieldChecker(bool& emptyLab, bool& emptyOpc, bool& emptyOper, string sourceLine)
+{
+    //variables to be used keep track of number of spaces and tabs
+    //when determining if parameters are missing
+    int numSpaces=0;
+    int numTabs=0;
+    
+    bool emptyField[3]; //hold the boolean values for the passed in the bool parameters
+    for(int i = 0; i<3; i++)
+        emptyField[i]=false;
+    
+    //go through string find out which parameters are empty
+    //set the corresponding array element to "empty" if a parameter is missing
+    
+    //see if label is missing.
+    if(sourceLine[0]=='\t' || sourceLine[0]==' ')
+    {
+        emptyField[0]=true;
+    }
+    
+    //in order to determine if the opcode or operand is missing, the following algorithm
+    //counts the number of continuous spaces and tabs. if there are more than 7 uninterrupted spaces
+    //or 2 tabs, then the field is determined to be missing.
+    if(emptyField[0])
+    {
+        int index=1;
+        for(int i=0;i<sourceLine.length();i++)
+        {
+            //if 7 spaces are found without a non-space character, set the field to be empty
+            if(numSpaces>7)
+            {
+                emptyField[index]=true;
+                numSpaces=0;
+                index++;
+            }
+            //if 2 tabs are found without a non-space character, set the field to be empty
+            if(numTabs>2)
+            {
+                emptyField[index]=true;
+                numTabs=0;
+                index++;
+            }
+            if(sourceLine[i]==' ')
+                numSpaces++;
+            if(sourceLine[i]=='\t')
+                numTabs++;
+            //if a non-space character is found, reset numSpaces and numTabs
+            if(sourceLine[i]!='\t' && sourceLine[i]!=' ')
+            {
+                numTabs=0;
+                numSpaces=0;
+                
+                //move on to the next index when a space character is found
+                if(sourceLine[i+1]==' ' || sourceLine[i+1]=='\t')
+                {
+                    index++;
+                }
+            }
+        }
+    }
+    else //the case where the label isn't missing
+    {
+        int index = 0;
+        for(int i=0;i<sourceLine.length();i++)
+        {
+            //if 7 spaces are found without a non-space character, set the field to be empty
+            if(numSpaces>7)
+            {
+                emptyField[index]=true;
+                numSpaces=0;
+                index++;
+            }
+            //if 2 tabs are found without a non-space character, set the field to be empty
+            if(numTabs>2)
+            {
+                emptyField[index]=true;
+                numTabs=0;
+                index++;
+            }
+            if(sourceLine[i]==' ')
+                numSpaces++;
+            if(sourceLine[i]=='\t')
+                numTabs++;
+            //if a non-space character is found, reset numSpaces and numTabs
+            if(sourceLine[i]!='\t' && sourceLine[i]!=' ')
+            {
+                numTabs=0;
+                numSpaces=0;
+                
+                //move on to the next index when a space character is found
+                if(sourceLine[i+1]==' ' || sourceLine[i+1]=='\t')
+                {
+                    index++;
+                }
+            }
+        }
+    }
+    
+    //update bool variables
+    emptyLab=emptyField[0];
+    emptyOpc=emptyField[1];
+    emptyOper=emptyField[2];
+}
+
+//based on which fields are empty, split the string and store the tokens accordingly
+void split(string *tokens, string sourceLine,string& lab, string& opc, string& oper)
+{
+    int j=0;
+    for(int i=0;i<sourceLine.length();i++)
+    {
+        if(sourceLine[i]!='\t' && sourceLine[i]!=' ')
+        {
+            //concatenate characters to the variable if the field is not empty
+            if(tokens[j]!="empty")
+            {
+                tokens[j]+=sourceLine[i];
+            }
+            else
+            {
+                j++; //move to the next element in the array
+                i--; //go back a character since an element in the array was skipped
+            }
+            
+            //move on to next character if a space is found
+            if(sourceLine[i+1] == ' ' || sourceLine[i+1] == '\t')
+            {
+                j++;
+            }
+        }
+    }
+    lab=tokens[0];
+    opc=tokens[1];
+    oper=tokens[2];
+}
+
+int handleLineOne(string& lab, string& opc, string& oper,ofstream& intFile, int& locationCounter,symbolTable& symtab, opcodeTable& optab, vector<int>& errorList, errorTable& errtab)
+{
+    //search symtable to see if label already exists, if it already exists throw a duplicate label error
+    //else insert the label and address into the symtab
+    if(lab != "empty")//only insert into the symtable if lable is not empty
+    {
+        //error checks for label length greater than 6 characters and first character not a letter
+        if(lab.length()>6)
+            errorList.push_back(errtab.getCode("Illegal label"));
+        if(!isalpha(lab[0]))
+            errorList.push_back(errtab.getCode("Illegal label"));
+        
+        //check if label is alpha numeric
+        bool validLabel=true;
+        for(int i = 0; i<lab.length();i++)
+        {
+            if (!isalnum(lab[i]))
+                validLabel=false;
+        }
+        if(!validLabel)
+            errorList.push_back(errtab.getCode("Illegal label"));
+        
+        //check for duplicate labels
+        if(symtab.exists(lab))
+        {
+            errorList.push_back(errtab.getCode("Duplicate labels"));
+        }
+        else
+        {
+            symtab.storeSymbol(lab,locationCounter);
+        }
+    }
+    
+    //update location counter based on opcode
+    //check opcode table and verify that the opcode is valid
+    bool validOpcode;
+    int opcodeVal=optab.getValue(opc,validOpcode);
+    if(validOpcode)
+    {
+        locationCounter += 3;
+        
+        //error check for RSUB opcode, verify that there is no operand
+        if(opc=="RSUB" && oper !="empty")
+            errorList.push_back(errtab.getCode("RSUB does not require an operand"));
+    }
+    else if(opc == "WORD")
+    {
+        locationCounter += 3;
+    }
+    else if(opc == "RESB")
+    {
+        if(oper=="empty")
+            errorList.push_back(errtab.getCode("Missing or illegal operand on data storage directive"));
+        
+        //string to int method
+        stringstream ss;
+        int value;
+        ss << oper;
+        ss >> value;
+        
+        locationCounter+=value;
+    }
+    else if(opc == "RESW")
+    {
+        if(oper=="empty")
+            errorList.push_back(errtab.getCode("Missing or illegal operand on data storage directive"));
+        
+        //string to int method
+        stringstream ss;
+        int value;
+        ss << oper;
+        ss >> value;
+        
+        locationCounter+=3*value;
+    }
+    else if(opc == "BYTE")
+    {
+        //variable to see if both single quotes are present
+        bool firstSingleQuote=false, secondSingleQuote=false;
+        string constant;
+        //check if there is a singlequote after C or X
+        if(oper[1]=='\'')
+            firstSingleQuote=true;
+        
+        //check if there is a singlequote at the end of the operand string
+        if(oper[oper.length()-1]=='\'')
+            secondSingleQuote=true;
+        
+        if(firstSingleQuote && secondSingleQuote)
+        {
+            //store constant, constant is the substring between the two single quotes
+            constant = oper.substr(2,oper.length()-3);
+            
+            //example C'EOF'
+            if(oper[0]=='C')
+            {
+                if(constant.length() > 30)
+                    errorList.push_back(errtab.getCode("More than 30 characters in character string"));
+                else
+                {
+                    locationCounter+=constant.length();
+                }
+            }
+            
+            //example X'F1'
+            if(oper[0]=='X')
+            {
+                //check that it is a hex value
+                bool validHex=true;
+                for(int i = 0; i<constant.length();i++)
+                {
+                    if (!isxdigit(constant[i]))
+                        validHex=false;
+                }
+                if(!validHex)
+                    errorList.push_back(errtab.getCode("Constant requires only hex digits"));
+                
+                //check that the constant length is an even number
+                if(constant.length() % 2 != 0)
+                    errorList.push_back(errtab.getCode("Constant contains an odd ammount of hex digits"));
+                //constant cannot be more than 32 hex digits long
+                if(constant.length() > 32)
+                    errorList.push_back(errtab.getCode("Constant is more than 32 hex digits (16 bytes) long"));
+                if(constant.length() <= 32 && constant.length() % 2 == 0 && validHex) //no error
+                {
+                    locationCounter+=(constant.length()/2);
+                }
+            }
+        }
+        //error messages depending on which single quotes are mssing
+        else if(!firstSingleQuote)
+        {
+            errorList.push_back(errtab.getCode("Mising first single quote"));
+        }
+        else if(!secondSingleQuote)
+        {
+            errorList.push_back(errtab.getCode("Mising second single quote"));
+        }
+        else
+        {
+            errorList.push_back(errtab.getCode("Missing both single quotes"));
+        }
+    }
+    else //if opcode is not in table, then it is an illegal operation
+    {
+        errorList.push_back(errtab.getCode("Illegal operation"));
+    }
+    
+    return opcodeVal;
+}
+
+//print to intermediate file
+void printToIntermediateFile(ofstream& intFile, string sourceLine,int address, string opcode, int opcodeValue, string operand, vector<int>& errorList)
+{
+    //print source line
+    intFile<<sourceLine<<endl;
+    
+    //print address
+    intFile<<hex<<address<<endl;
+    
+    //print opcode or value
+    if(opcodeValue==-1)
+        intFile<<dec<<-1<<" "<<opcode<<endl;
+    else
+        intFile<<hex<<opcodeValue<<endl;
+    
+    //print operand
+    intFile<<operand<<endl;
+    
+    //print error codes
+    if(errorList.size() != 0)
+    {
+        for(int i=0; i<errorList.size(); i++)
+            intFile<<dec<<errorList[i]<<" ";
+    }
+    else
+    {
+        intFile<<0;
+    }
+    intFile<<endl;
+    if(opcode != "END")
+        intFile<<"--------------------------------------------------------------------------"<<endl;
+    else
+        intFile<<"*END OF INTERMEDIATE FILE*";
+}
+
+void printCommentToIntermediateFile(ofstream& intFile, string comment)
+{
+    intFile<<comment<<endl;
+    intFile<<"--------------------------------------------------------------------------"<<endl;
+}
+#endif
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 3
+ //	File:               passTwo.h
+ // Description of File:
+ // Pass two of the assembler, this pass creates an object file
+ // which contains the head, text and end records. In addition
+ // a listing file is created which contains the object code,
+ // address and source code. Also errors are displayed after
+ // the line of code that produces the error.
+ ***************************************************************/
+
+#ifndef _passTwo_h
+#define _passTwo_h
+
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <cctype>
+#include "symbolTable.h"
+#include "opcodeTable.h"
+#include "errorTable.h"
+#include "passTwoFunctions.h"
+
+using namespace std;
+
+// pass two, the symboltable and opcode that were produced in pass one are
+// passed in.
+void passTwo(symbolTable& symtab, opcodeTable& optab, errorTable& errtab)
+{
+    // open the files that are needed for pass two
+    ifstream intermediateFile;
+    intermediateFile.open("intermediateFile.txt");
+    ofstream objectFile;
+    objectFile.open("objectFile.txt");
+    ofstream listingFile;
+    listingFile.open("listingFile.txt");
+    
+    bool error=false; // variable that checks if any errors are produced
+    if (intermediateFile.is_open())
+    {
+        string programName, programStartingAddress, programLength;
+        programName = symtab.programName;
+        
+        // conver the int value of starting address and progaram length into a string
+        // of hex characters
+        programStartingAddress = convertDecToHexString(symtab.programStartingAddress);
+        programLength = convertDecToHexString(symtab.programLength);
+        
+        //construct header record
+        if(!intermediateFile.eof())
+        {
+            //initalize header record with H and the program name
+            string headerRecord = "H"+programName;
+            
+            //determine how many spaces to add to program name
+            int spacesToAdd = 6 - programName.length();
+            for(int i = 0; i<spacesToAdd; i++)
+                headerRecord += " ";
+            
+            //add zeroes so that starting address takes up 6 columns
+            addZeroes(6, programStartingAddress);
+            headerRecord+=programStartingAddress;
+            
+            //add zeroes so that program length takes up 6 columns
+            addZeroes(6, programLength);
+            headerRecord+=programLength;
+            
+            headerRecord = toUpper(headerRecord);
+            objectFile<<headerRecord<<endl;
+        }
+        //construct text and end records along with listing file
+        string textRecord = "T";
+        string objectCodeLine,oldObjectCodeLine;
+        bool firstline = true;
+        while ( !intermediateFile.eof() )
+        {
+            string sourceLine; // string to hold the source code
+            getline(intermediateFile,sourceLine);
+            
+            // if statment to insure that any extraneous lines at the end of the intermediate
+            // file are ignored
+            if (sourceLine=="*END OF INTERMEDIATE FILE*")
+            {
+                break;
+            }
+            else if (sourceLine=="--------------------------------------------------------------------------")
+            {
+                //if the source line is "-----", ignored it
+            }
+            else if(sourceLine[0] == '.')
+            {
+                //write comment to listing file
+                listingFile<<sourceLine<<endl;
+            }
+            else
+            {
+                
+                string address,opcode,operand,errorLine,objectCode;
+                objectCode=""; //initialize objectcode for the line
+                
+                //read in values from intermediate file
+                intermediateFile>>address;
+                intermediateFile>>opcode;
+                
+                bool validOpcode = true;
+                if(opcode=="-1") // -1 indicated that the mneumonic was stored and not the value
+                {
+                    validOpcode = false;
+                    intermediateFile>>opcode;
+                }
+                
+                intermediateFile>>operand;
+                intermediateFile.get(); //needed to read the next line
+                getline(intermediateFile,errorLine,'\n');
+                
+                if(!validOpcode) //the case where the opcode doesnt have a value (eg. BYTE)
+                {
+                    if(opcode == "BYTE")
+                    {
+                        //object code = value of constant
+                        string constant = operand.substr(2,operand.length()-3);
+                        if(operand[0] == 'C')
+                        {
+                            //convert constant to hex string
+                            stringstream ss;
+                            for (int i = 0; i < constant.length(); i++)
+                            {
+                                char x = constant[i];
+                                objectCode += convertDecToHexString(int(x));
+                            }
+                        }
+                        else // eg. X'F1'
+                            objectCode=constant;
+                    }
+                    if(opcode=="WORD")
+                    {
+                        objectCode = convertDecToHexString(stringToInt(operand));
+                        addZeroes(6, objectCode);
+                    }
+                }
+                else
+                {
+                    addZeroes(2, opcode);
+                    
+                    if(operand == "empty")
+                    {
+                        operand = "0000";
+                    }
+                    else if(operand[operand.length()-2] == ',' && operand[operand.length()-1] == 'X') // case where index bit is set
+                    {
+                        operand = operand.substr(0,operand.length()-2);
+                        // get the index bit
+                        // add 0x8000 since the index bit is set
+                        operand = convertDecToHexString(symtab.getAddress(operand)+0x8000);
+                    }
+                    else
+                    {
+                        //get the address from the symbol table and and convert to a hex string
+                        operand=convertDecToHexString(symtab.getAddress(operand));
+                    }
+                    addZeroes(4, operand);
+                    objectCode=opcode+operand;
+                }
+                
+                //change the object code to uppercase
+                // eg. 107a -> 107A
+                objectCode=toUpper(objectCode);
+                
+                // add zeroes
+                string temp;
+                int zeroesToAdd = 4 - address.length();
+                for(int i = 0; i<zeroesToAdd; i++)
+                    temp += "0";
+                address=temp+address;
+                
+                //Output the generated information to the listing file
+                //capitalize the address
+                listingFile<<toUpper(address)<<"    ";
+                
+                if(objectCode=="")
+                    listingFile<<"      ";
+                else
+                {
+                    listingFile<<objectCode;
+                    int spacesToAdd = 6 - objectCode.length();
+                    for(int i = 0; i<spacesToAdd; i++)
+                        listingFile<<" ";
+                }
+                
+                // if the label is absent in the source line, add spaces to line up the columns
+                if(isspace(sourceLine[0]))
+                    listingFile<<"          "<<sourceLine<<endl;
+                else
+                    listingFile<<"      "<<sourceLine<<endl;
+                
+                //display error messages
+                if(errorLine[0] != '0')
+                {
+                    error=true;
+                    string tokens[10];
+                    splitString(tokens,errorLine);
+                    for(int i=0; i<10; i++)
+                    {
+                        if(tokens[i]!="")
+                        {
+                            listingFile<<"\t\t\t\t\tERROR: "<<errtab.getMessage(stringToInt(tokens[i]))<<endl;
+                        }
+                    }
+                }
+                
+                // dont generate object code for the first line
+                if(objectCode==""&&!firstline)
+                {
+                    objectCode="      ";
+                }
+                
+                //store the old object code before adding to it
+                oldObjectCodeLine=objectCodeLine;
+                objectCodeLine+=objectCode;
+                
+                // if after adding new object code and the length is too long
+                // revert back to the old object code line. Initialize a new text record if
+                // the length is too long and write the old text record to the object file.
+                if(objectCodeLine.length()>60)
+                {
+                    //rever to old object code
+                    objectCodeLine=oldObjectCodeLine;
+                    getRidOfSpaces(objectCodeLine);
+                    
+                    //find the length of object code, this will be stored in the text record
+                    string lengthOfObjectCode = convertDecToHexString(objectCodeLine.length()/2);
+                    
+                    //add a zero the length if the hex string is only one digit
+                    // eg. A -> 0A
+                    if(lengthOfObjectCode.length()==1)
+                        lengthOfObjectCode = "0" + lengthOfObjectCode;
+                    
+                    //add the length and the object code to the text record
+                    textRecord+=lengthOfObjectCode;
+                    textRecord+=objectCodeLine;
+                    
+                    //capitalize the text record
+                    textRecord=toUpper(textRecord);
+                    
+                    //output to text record to object file
+                    objectFile<<textRecord<<endl;
+                    
+                    //initialize the new text record
+                    objectCodeLine=objectCode;
+                    textRecord = "T00" + address;
+                }
+                else if(objectCodeLine.length()<=6)
+                {
+                    textRecord = "T00" + address;
+                    oldObjectCodeLine="";
+                }
+            }
+            firstline=false;
+            
+        }
+        
+        //generate last text record
+        getRidOfSpaces(objectCodeLine);
+        
+        //find the length of object code, this will be stored in the text record
+        string lengthOfObjectCode = convertDecToHexString(objectCodeLine.length()/2);
+        
+        //add a zero the length if the hex string is only one digit
+        // eg. A -> 0A
+        if(lengthOfObjectCode.length()==1)
+            lengthOfObjectCode = "0" + lengthOfObjectCode;
+        
+        //add the length and the object code to the text record
+        textRecord+=lengthOfObjectCode;
+        textRecord+=objectCodeLine;
+        
+        //capitalize the text record
+        textRecord=toUpper(textRecord);
+        
+        //output to text record to object file
+        objectFile<<textRecord<<endl;
+        
+        //make end record
+        string endRecord = "E";
+        
+        endRecord += programStartingAddress;
+        endRecord = toUpper(endRecord);
+        objectFile<<endRecord;
+        
+        //print symbol table end of listing file
+        symtab.printTo(listingFile);
+                
+        //close all files
+        intermediateFile.close();
+        objectFile.close();
+        listingFile.close();
+        
+        //if there is an error found in the object code, delete the file
+        if(error)
+            remove("objectFile.txt");
+    }
+}
+
+
+#endif
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 3
+ //	File:               passTwoFunctions.h
+ // Description of File:
+ // Stores functions that were used in pass one
+ // such as, string split function, a function to determine
+ // which fields are empty and handleLineOne which is defined
+ // in the pass one algorithm from the book
+ ***************************************************************/
+
+#ifndef _passTwoFunctions_h
+#define _passTwoFunctions_h
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <cctype>
+#include "symbolTable.h"
+#include "opcodeTable.h"
+#include "errorTable.h"
+using namespace std;
+
+
+//capitalizes a string
+string toUpper(string s)
+{
+    int i = 0;
+    string temp = "";
+    while(s[i])
+    {
+        temp += toupper(s[i]);
+        i++;
+    }
+    
+    return temp;
+}
+
+//given an int n, convert it to a string of hex characters
+string convertDecToHexString(int n)
+{
+    stringstream ss;
+    string hexString;
+    ss<<hex<<n;
+    ss>>hexString;
+    return hexString;
+}
+
+//given a string and a string array
+//tokenize the string
+void splitString(string * tokens, string line)
+{
+    int j=0;
+    for(int i = 0; i < line.length(); i++)
+    {
+        if(line[i] != ' ')
+        {
+            tokens[j]+=line[i];
+            if(line[i+1] == ' ')
+                j++;
+        }
+    }
+}
+
+//remove spaces from a given string
+void getRidOfSpaces(string& s)
+{
+    string temp = "";
+    for(int i = 0; i<s.length(); i++)
+    {
+        if(s[i]!=' ')
+            temp+=s[i];
+    }
+    s = temp;
+}
+
+//convert a string to and int
+int stringToInt(string& s)
+{
+    stringstream ss(s);
+    int result;
+    ss >> result;
+    return result;
+}
+
+//add zeroes to the front of a string
+void addZeroes(int n, string & s)
+{
+    string temp;
+    int zeroesToAdd = n - s.length();
+    for(int i = 0; i<zeroesToAdd; i++)
+        temp += "0";
+    s=temp+s;
+}
+
+#endif
+/****************************************************************
+ // Name:               Jacob Figueroa
+ // ID:                 20056963
+ // CS Lab Username:    jafigueroa
+ //	Assignment:         Phase 2
+ //	File:               symbolTable.h
+ // Description of File:
+ // The symbol table contains a vector which holds labels
+ // and their corresponding address.
+ ***************************************************************/
+
+#include <fstream>
+#include <iostream>
+#include <vector>
+using namespace std;
+
+#ifndef _334_Phase_2_symbolTable_h
+#define _334_Phase_2_symbolTable_h
+
+class symbolTable
+{
+private:
+    ofstream symbolTableFile; //file to be created to save symbol table
+    //node which holds a label (symbol) and its address value
+    class node
+	{
+	public:
+        string symbol;
+        int address;
+        node(string sym, int addr)
+        {
+            symbol=sym;
+            address=addr;
+        }
+	};
+    vector<node*> table;
+    
+public:
+    string programName;
+    int programStartingAddress, programLength;
+	
+	symbolTable()
+	{}
+    
+	~symbolTable()
+	{}
+    
+    //search through table and look for label
+    //return label address, if label is not in table
+    //return -1
+    int getAddress(string label)
+    {
+        for(int i=0;i<table.size();i++)
+        {
+            if(table[i]->symbol==label)
+                return table[i]->address;
+        }
+        return -1;
+    }
+    
+    //return the label stored at a given index
+    string getLabel(int index)
+    {
+        return table[index]->symbol;
+    }
+    
+    //return size of the table
+    int getSize()
+    {
+        return table.size();
+    }
+    
+    //boolean function to check if a label already exists in the table
+    bool exists(string label)
+    {
+        for(int i=0;i<table.size();i++)
+        {
+            if(table[i]->symbol==label)
+                return true;
+        }
+        return false;
+    }
+    
+    //insert a label and labelAddress into symbol table
+    void storeSymbol(string label, int labelAddress)
+    {
+        table.push_back(new node(label, labelAddress));
+    }
+    
+    //save table as a text document
+    void saveTable()
+    {
+        symbolTableFile.open("symbolTableFile.txt");
+        for(int i=0;i<table.size();i++)
+        {
+            symbolTableFile<<table[i]->symbol<<" "<<hex<<table[i]->address<<endl;
+        }
+        symbolTableFile.close();
+    }
+    
+    //displays all labels and addresses stored in the symbol table
+    void display()
+    {
+        for(int i=0;i<table.size();i++)
+        {
+            cout<<table[i]->symbol<<" "<<hex<<table[i]->address<<endl;
+        }
+    }
+    
+    void printTo(ofstream& file)
+    {
+        file<<endl<<"Symbol Table"<<endl;
+        for(int i=0;i<table.size();i++)
+        {
+            /*
+            if(table[i]->symbol.length()<4)
+                file<<table[i]->symbol<<"\t\t"<<hex<<table[i]->address<<endl;
+            else*/
+                file<<table[i]->symbol<<"\t"<<hex<<table[i]->address<<endl;
+        }
+    }
+};
+
+#endif

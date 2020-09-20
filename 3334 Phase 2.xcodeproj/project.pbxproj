@@ -25,9 +25,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		166A385E1811EA420006BEF7 /* passOne.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = passOne.h; sourceTree = "<group>"; };
 		16AA6D6B18037E3D0008BA8E /* 3334 Phase 2 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "3334 Phase 2"; sourceTree = BUILT_PRODUCTS_DIR; };
 		16AA6D6E18037E3D0008BA8E /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		16AA6D7018037E3D0008BA8E /* _334_Phase_2.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = _334_Phase_2.1; sourceTree = "<group>"; };
+		16AC7CB5180DC67F009AAE16 /* symbolTable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = symbolTable.h; sourceTree = "<group>"; };
+		16AC7CB6180DC693009AAE16 /* opcodeTable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = opcodeTable.h; sourceTree = "<group>"; };
+		16C14AE3180CE04800A4B6B1 /* functions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = functions.h; sourceTree = "<group>"; };
+		16D43E56180F749200BFE744 /* errorTable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = errorTable.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +66,11 @@
 			isa = PBXGroup;
 			children = (
 				16AA6D6E18037E3D0008BA8E /* main.cpp */,
+				16AC7CB5180DC67F009AAE16 /* symbolTable.h */,
+				16AC7CB6180DC693009AAE16 /* opcodeTable.h */,
+				16D43E56180F749200BFE744 /* errorTable.h */,
+				166A385E1811EA420006BEF7 /* passOne.h */,
+				16C14AE3180CE04800A4B6B1 /* functions.h */,
 				16AA6D7018037E3D0008BA8E /* _334_Phase_2.1 */,
 			);
 			path = "3334 Phase 2";
@@ -225,6 +235,7 @@
 				16AA6D7618037E3D0008BA8E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
